@@ -232,6 +232,25 @@ void load_all_sessions() {
     // TODO: For Part 1.1, write your file operation code here.
     // Hint: Use get_session_file_path() to get the file path for each session.
     //       Don't forget to load all of sessions on the disk.
+    char session_path[SESSION_PATH_LEN];
+
+    for(int id = 0; id < NUM_SESSIONS; ++id)
+    {
+        get_session_file_path(id, session_path);
+        fd = open(
+            session_path,
+            O_WRONLY | O_CREAT | O_TRUNC,
+            S_IRUSR | S_IWUSR
+        );
+
+        // did we fail to open the file?
+        if(fd < 0)
+        {
+            continue;
+        }
+
+        // session_list[id];
+    }
 }
 
 /**
@@ -242,6 +261,64 @@ void load_all_sessions() {
 void save_session(int session_id) {
     // TODO: For Part 1.1, write your file operation code here.
     // Hint: Use get_session_file_path() to get the file path for each session.
+
+    char session_path[SESSION_PATH_LEN];
+    get_session_file_path(session_id, session_path);
+    fd = open(
+        session_path,
+        O_WRONLY | O_CREAT | O_TRUNC,
+        S_IRUSR | S_IWUSR
+    );
+
+    // did we open the file?
+    if(fd >= 0)
+    {
+        char line1[512];
+        char line2[512], *pos2 = line2;
+        char line3[512], *pos3 = line3;
+        char all_lines[512*3];
+
+        // format each line
+        sprintf(line1, "%d\n", session_list[sesssion_id].in_use);
+        for(int i = 0; i < NUM_VARIABLES; ++i)
+        {
+            if(i)
+            {
+                pos2 += sprintf(pos2, " ");
+                pos3 += sprintf(pos3, " ");
+            }
+            pos2 += sprintf(pos2, "%d", session_list[sesssion_id].variables[i]);
+            pos3 += sprintf(pos3, "%d", session_list[sesssion_id].values[i]);
+        }
+
+        pos2 += sprintf(pos2, "\n")
+        pos3 += sprintf(pos3, "\n\0")
+
+        all_lines = sprintf(all_lines, "%s%s%s", line1, line2, line3);
+
+        // write our output
+        int writerc = write(fd, all_lines, strlen(all_lines));
+        // write() failed
+        if(writerc != strlen(output))
+        {
+            printf(
+                "ERROR: write failed (session_id = %d, writerc = %d.)\n",
+                session_id, writerc
+            );
+        }
+
+        // close the session file
+        fsync(fd);
+        close(fd);
+    }
+    // failed to open the file
+    else
+    {
+        printf(
+            "ERROR: open failed (session_id = %d)\n",
+            session_id
+        );
+    }
 }
 
 /**
