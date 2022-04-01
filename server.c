@@ -11,6 +11,9 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 
+#include <stdio.h>
+#include <fcntl.h>
+
 #define NUM_VARIABLES 26
 #define NUM_SESSIONS 128
 #define NUM_BROWSER 128
@@ -237,10 +240,10 @@ void load_all_sessions() {
     for(int id = 0; id < NUM_SESSIONS; ++id)
     {
         get_session_file_path(id, session_path);
-        fd = open(
+        int fd = open(
             session_path,
-            O_WRONLY | O_CREAT | O_TRUNC,
-            S_IRUSR | S_IWUSR
+            O_RDONLY,
+            S_IRUSR
         );
 
         // did we fail to open the file?
@@ -249,7 +252,75 @@ void load_all_sessions() {
             continue;
         }
 
-        // session_list[id];
+        char contents[512 * 3];
+        int rc = read(fd, contents, sizeof(contents));
+
+        // did we fail to read the file?
+        if(rc < 0)
+        {
+            continue;
+        }
+
+        printf(contents);
+        char* line = contents;
+        int line_num = 1;
+        while(line)
+        {
+            char* next_line = strchr(line, '\n');
+            // terminate if need be
+            if(next_line)
+                *next_line = '\0';
+
+            // line #1
+            if(line_num == 1)
+            {
+                session_list[id].in_use = atoi(line);
+                ++line_num;
+
+                printf("%d\n", session_list[id].in_use);
+            }
+            // line #2
+            else if(line_num == 2)
+            {
+                char val[1];
+                char* ptr = strtok(line, " ");
+                for(int i = 0; i < NUM_VARIABLES; ++i)
+                {
+                    sprintf(val, "%d", *ptr);
+                    session_list[id].variables[i] = atoi(val - '0');
+                    ptr = strtok(NULL, " ");
+
+                    printf("%d ", session_list[id].variables[i]);
+                }
+                printf("\n");
+
+                ++line_num;
+            }
+            // line #3
+            else if(line_num == 3)
+            {
+                char val[20];
+                char* ptr = strtok(line, " ");
+                for(int i = 0; i < NUM_VARIABLES; ++i)
+                {
+                    sprintf(val, "%d", *ptr);
+                    // not working
+                    session_list[id].values[i] = atoi(val - '0');
+                    ptr = strtok(NULL, " ");
+
+                    printf("%d ", session_list[id].values[i]);
+                }
+                printf("\n");
+
+                ++line_num;
+            }
+
+            // restore newline
+            if(next_line)
+                *next_line = '\n';
+
+            line = next_line ? (next_line + 1) : NULL;
+        }
     }
 }
 
@@ -264,7 +335,7 @@ void save_session(int session_id) {
 
     char session_path[SESSION_PATH_LEN];
     get_session_file_path(session_id, session_path);
-    fd = open(
+    int fd = open(
         session_path,
         O_WRONLY | O_CREAT | O_TRUNC,
         S_IRUSR | S_IWUSR
@@ -276,10 +347,10 @@ void save_session(int session_id) {
         char line1[512];
         char line2[512], *pos2 = line2;
         char line3[512], *pos3 = line3;
-        char all_lines[512*3];
+        char all_lines[512*3], *pos_all = all_lines;
 
         // format each line
-        sprintf(line1, "%d\n", session_list[sesssion_id].in_use);
+        sprintf(line1, "%d\n", session_list[session_id].in_use);
         for(int i = 0; i < NUM_VARIABLES; ++i)
         {
             if(i)
@@ -287,19 +358,19 @@ void save_session(int session_id) {
                 pos2 += sprintf(pos2, " ");
                 pos3 += sprintf(pos3, " ");
             }
-            pos2 += sprintf(pos2, "%d", session_list[sesssion_id].variables[i]);
-            pos3 += sprintf(pos3, "%d", session_list[sesssion_id].values[i]);
+            pos2 += sprintf(pos2, "%d", session_list[session_id].variables[i]);
+            pos3 += sprintf(pos3, "%d", session_list[session_id].values[i]);
         }
 
-        pos2 += sprintf(pos2, "\n")
-        pos3 += sprintf(pos3, "\n\0")
+        pos2 += sprintf(pos2, "\n");
+        pos3 += sprintf(pos3, "\n\0");
 
-        all_lines = sprintf(all_lines, "%s%s%s", line1, line2, line3);
+        pos_all += sprintf(all_lines, "%s%s%s", line1, line2, line3);
 
         // write our output
         int writerc = write(fd, all_lines, strlen(all_lines));
         // write() failed
-        if(writerc != strlen(output))
+        if(writerc != strlen(all_lines))
         {
             printf(
                 "ERROR: write failed (session_id = %d, writerc = %d.)\n",
@@ -410,7 +481,6 @@ void browser_handler(int browser_socket_fd) {
 
         session_to_str(session_id, response);
         broadcast(session_id, response);
-
         save_session(session_id);
     }
 }
