@@ -299,16 +299,17 @@ void load_all_sessions() {
             // line #3
             else if(line_num == 3)
             {
-                char val[20];
-                char* ptr = strtok(line, " ");
+                // char val[20];
+                // char* ptr = strtok(line, " ");
+                char* ptr;
+                double val;
                 for(int i = 0; i < NUM_VARIABLES; ++i)
                 {
-                    sprintf(val, "%d", *ptr);
                     // not working
-                    session_list[id].values[i] = atoi(val - '0');
-                    ptr = strtok(NULL, " ");
-
-                    printf("%d ", session_list[id].values[i]);
+                    val = strtod(line, &ptr);
+                    session_list[id].values[i] = val;
+                    printf("%lf ", session_list[id].values[i]);
+                    line = ptr;
                 }
                 printf("\n");
 
@@ -359,7 +360,7 @@ void save_session(int session_id) {
                 pos3 += sprintf(pos3, " ");
             }
             pos2 += sprintf(pos2, "%d", session_list[session_id].variables[i]);
-            pos3 += sprintf(pos3, "%d", session_list[session_id].values[i]);
+            pos3 += sprintf(pos3, "%lf", session_list[session_id].values[i]);
         }
 
         pos2 += sprintf(pos2, "\n");
