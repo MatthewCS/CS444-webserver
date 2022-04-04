@@ -261,7 +261,7 @@ void load_all_sessions() {
             continue;
         }
 
-        printf(contents);
+        // printf(contents);
         char* line = contents;
         int line_num = 1;
         while(line)
@@ -277,7 +277,7 @@ void load_all_sessions() {
                 session_list[id].in_use = atoi(line);
                 ++line_num;
 
-                printf("%d\n", session_list[id].in_use);
+                // printf("%d\n", session_list[id].in_use);
             }
             // line #2
             else if(line_num == 2)
@@ -290,9 +290,9 @@ void load_all_sessions() {
                     session_list[id].variables[i] = atoi(val - '0');
                     ptr = strtok(NULL, " ");
 
-                    printf("%d ", session_list[id].variables[i]);
+                    // printf("%d ", session_list[id].variables[i]);
                 }
-                printf("\n");
+                // printf("\n");
 
                 ++line_num;
             }
@@ -308,10 +308,10 @@ void load_all_sessions() {
                     // not working
                     val = strtod(line, &ptr);
                     session_list[id].values[i] = val;
-                    printf("%lf ", session_list[id].values[i]);
+                    // printf("%lf ", session_list[id].values[i]);
                     line = ptr;
                 }
-                printf("\n");
+                // printf("\n");
 
                 ++line_num;
             }
