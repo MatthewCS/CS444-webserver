@@ -10,6 +10,9 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
+#include <stdio.h>
+#include <fcntl.h>
+
 #define COOKIE_PATH "./browser.cookie"
 
 static bool browser_on = true;  // Determines if the browser is on/off.
@@ -68,6 +71,30 @@ void load_cookie() {
     // TODO: For Part 1.2, write your file operation code here.
     // Hint: The file path of the cookie is stored in COOKIE_PATH.
     session_id = -1; // You may move this line to anywhere inside this fucntion.
+
+    int fd = open(
+        COOKIE_PATH,
+        O_RDONLY,
+        S_IRUSR
+    );
+
+    char contents[16];
+    int rc = read(fd, contents, sizeof(contents));
+
+    // did we fail to read the file?
+    if(rc < 0)
+    {
+        printf(
+            "ERROR: read failed (session_id = %d, rc = %d.)\n",
+            session_id, rc
+        );
+        printf("If rc = -1, then no cookie file was found, and a new one ");
+        printf("will be created.\n");
+        return;
+    }
+
+    session_id = atoi(contents);
+    // printf("%d\n", session_id);
 }
 
 /**
@@ -76,6 +103,40 @@ void load_cookie() {
 void save_cookie() {
     // TODO: For Part 1.2, write your file operation code here.
     // Hint: The file path of the cookie is stored in COOKIE_PATH.
+    int fd = open(
+        COOKIE_PATH,
+        O_WRONLY | O_CREAT | O_TRUNC,
+        S_IRUSR | S_IWUSR
+    );
+
+    // did we open the file?
+    if(fd >= 0)
+    {
+        char buf[16];
+        sprintf(buf, "%d\n\0", session_id);
+        int writerc = write(fd, buf, strlen(buf));
+
+        // write() failed
+        if(writerc != strlen(buf))
+        {
+            printf(
+                "ERROR: write failed (session_id = %d, writerc = %d.)\n",
+                session_id, writerc
+            );
+        }
+
+        // close the session file
+        fsync(fd);
+        close(fd);
+    }
+    // failed to open the file
+    else
+    {
+        printf(
+            "ERROR: open failed (session_id = %d)\n",
+            session_id
+        );
+    }
 }
 
 /**
@@ -112,7 +173,7 @@ void server_listener() {
 /**
  * Starts the browser. Sets up the connection, start the listener thread,
  * and keeps a loop to read in the user's input and send it out.
- * 
+ *
  * @param host_ip the host ip to connect
  * @param port the host port to connect
  */
