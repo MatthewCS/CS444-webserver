@@ -11,9 +11,9 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 
-#include <stdio.h>
-#include <fcntl.h>
-#include <regex.h>
+#include <stdio.h>  // part 1
+#include <fcntl.h>  // part 1
+#include <regex.h>  // part 3.1
 
 #define NUM_VARIABLES 26
 #define NUM_SESSIONS 128
