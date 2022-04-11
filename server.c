@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <fcntl.h>
+#include <regex.h>
 
 #define NUM_VARIABLES 26
 #define NUM_SESSIONS 128
@@ -147,6 +148,19 @@ bool process_message(int session_id, const char message[]) {
     // TODO: For Part 3.1, write code to determine if the input is invalid and return false if it is.
     // Hint: Also need to check if the given variable does exist (i.e., it has been assigned with some value)
     // for the first variable and the second variable, respectively.
+    regex_t regex;
+    int re_return_val;
+    char* re_pattern = " *[a-z] *= *[a-z0-9] *[+-/*] *[a-z0-9] *";
+
+    re_return_val = regcomp(&regex, re_pattern, 0);
+    re_return_val = regexec(&regex, message, 0, NULL, 0);
+
+    // Was the regex pattern found or not?
+    if(re_return_val != 0) {
+        // not found
+        printf("Input \"%s\" not matched!\n", message);
+        return false;
+    }
 
     // Makes a copy of the string since strtok() will modify the string that it is processing.
     char data[BUFFER_LEN];
@@ -477,7 +491,7 @@ void browser_handler(int browser_socket_fd) {
         bool data_valid = process_message(session_id, message);
         if (!data_valid) {
             // TODO: For Part 3.1, add code here to send the error message to the browser.
-            continue;
+            broadcast(session_id, "ERROR: Invalid input!");
         }
 
         session_to_str(session_id, response);
