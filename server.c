@@ -401,8 +401,9 @@ void save_session(int session_id) {
     else
     {
         printf(
-            "ERROR: open failed (session_id = %d)\n",
-            session_id
+            "ERROR: open failed (session_id = %d, fd = %d)\n",
+            session_id,
+            fd
         );
     }
 }
