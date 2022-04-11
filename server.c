@@ -546,7 +546,18 @@ void start_server(int port) {
 
         // Starts the handler thread for the new browser.
         // TODO: For Part 2.1, creat a thread to run browser_handler() here.
-        browser_handler(browser_socket_fd);
+        pthread_t thread;
+        int err; 
+        
+        err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, (void *) browser_socket_fd);
+
+        if (err) {
+            printf("ERROR: Can't create thread: %d\n", err);
+            exit(EXIT_FAILURE);
+        }
+
+        // pthread_join(thread, NULL);
+        // printf("Browser thread joined.\n");
     }
 
     // Closes the socket.
