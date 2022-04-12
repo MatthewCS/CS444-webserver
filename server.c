@@ -596,8 +596,8 @@ void start_server(int port) {
         pthread_t thread;
         int err;
 
-        // err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, (void *) browser_socket_fd);
-        err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, & browser_socket_fd);
+        err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, (void *) browser_socket_fd);
+        // err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, & browser_socket_fd);
 
         if (err) {
             printf("ERROR: Can't create thread: %d\n", err);
