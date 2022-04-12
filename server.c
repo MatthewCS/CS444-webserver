@@ -37,11 +37,11 @@ typedef struct session_struct {
 } session_t;
 
 // part 3.2
-struct session_ht_struct {
+typedef struct session_ht_struct {
     int id;
-    session_t session;
+    session_t* session;
     UT_hash_handle hh;
-};
+} session_ht_t;
 
 static browser_t browser_list[NUM_BROWSER];                             // Stores the information of all browsers.
 // TODO: For Part 3.2, convert the session_list to a simple hashmap/dictionary.
@@ -101,7 +101,9 @@ void session_to_str(int session_id, char result[]) {
     memset(result, 0, BUFFER_LEN);
     // session_t session = session_list[session_id];
     session_t* session;
-    HASH_FIND_INT(session_ht, &session_id, session);
+    session_ht_t* session_ht_entry;
+    HASH_FIND_INT(session_ht, &session_id, session_ht_entry);
+    session = session_ht_entry->session;
 
     for (int i = 0; i < NUM_VARIABLES; ++i) {
         if (session->variables[i]) {
@@ -177,7 +179,10 @@ bool process_message(int session_id, const char message[]) {
 
     // Part 3.2
     session_t* session;
-    HASH_FIND_INT(session_ht, &session_id, session);
+    session_ht_t* session_ht_entry;
+    HASH_FIND_INT(session_ht, &session_id, session_ht_entry);
+    session = malloc(sizeof session);
+    session = session_ht_entry->session;
 
     // Makes a copy of the string since strtok() will modify the string that it is processing.
     char data[BUFFER_LEN];
@@ -279,7 +284,12 @@ void load_all_sessions() {
 
         // Part 3.2
         session_t* session;
-        HASH_FIND_INT(session_ht, &id, session);
+        session_ht_t* session_ht_entry;
+        session_ht_entry = malloc(sizeof *session_ht_entry);
+        session_ht_entry->id = id;
+        HASH_ADD_INT(session_ht, id, session_ht_entry);
+        session_ht_entry->session = malloc(sizeof *session);
+        session = session_ht_entry->session;
 
         // did we fail to open the file?
         if(fd < 0)
@@ -379,7 +389,10 @@ void save_session(int session_id) {
 
     // Part 3.2
     session_t* session;
-    HASH_FIND_INT(session_ht, &session_id, session);
+    session_ht_t* session_ht_entry;
+    HASH_FIND_INT(session_ht, &session_id, session_ht_entry);
+    session = malloc(sizeof session);
+    session = session_ht_entry->session;
 
     // did we open the file?
     if(fd >= 0)
@@ -465,7 +478,10 @@ int register_browser(int browser_socket_fd) {
 
             // Part 3.2
             session_t* session;
-            HASH_FIND_INT(session_ht, &session_id, session);
+            session_ht_t* session_ht_entry;
+            HASH_FIND_INT(session_ht, &session_id, session_ht_entry);
+            session = malloc(sizeof session);
+            session = session_ht_entry->session;
 
             if (!session->in_use) {
                 session_id = i;
