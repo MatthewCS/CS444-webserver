@@ -14,6 +14,7 @@
 #include <stdio.h>  // part 1
 #include <fcntl.h>  // part 1
 #include <regex.h>  // part 3.1
+#include "inc/uthash.h" // part 3.2
 
 #define NUM_VARIABLES 26
 #define NUM_SESSIONS 128
@@ -31,11 +32,21 @@ typedef struct session_struct {
     bool in_use;
     bool variables[NUM_VARIABLES];
     double values[NUM_VARIABLES];
+    // part 3.2
+    UT_hash_handle hh;
 } session_t;
+
+// part 3.2
+struct session_ht_struct {
+    int id;
+    session_t session;
+    UT_hash_handle hh;
+};
 
 static browser_t browser_list[NUM_BROWSER];                             // Stores the information of all browsers.
 // TODO: For Part 3.2, convert the session_list to a simple hashmap/dictionary.
-static session_t session_list[NUM_SESSIONS];                            // Stores the information of all sessions.
+// static session_t session_list[NUM_SESSIONS];                            // Stores the information of all sessions.
+static struct session_ht_struct *session_ht = NULL;
 static pthread_mutex_t browser_list_mutex = PTHREAD_MUTEX_INITIALIZER;  // A mutex lock for the browser list.
 static pthread_mutex_t session_list_mutex = PTHREAD_MUTEX_INITIALIZER;  // A mutex lock for the session list.
 
@@ -88,16 +99,18 @@ void start_server(int port);
  */
 void session_to_str(int session_id, char result[]) {
     memset(result, 0, BUFFER_LEN);
-    session_t session = session_list[session_id];
+    // session_t session = session_list[session_id];
+    session_t* session;
+    HASH_FIND_INT(session_ht, &session_id, session);
 
     for (int i = 0; i < NUM_VARIABLES; ++i) {
-        if (session.variables[i]) {
+        if (session->variables[i]) {
             char line[32];
 
-            if (session.values[i] < 1000) {
-                sprintf(line, "%c = %.6f\n", 'a' + i, session.values[i]);
+            if (session->values[i] < 1000) {
+                sprintf(line, "%c = %.6f\n", 'a' + i, session->values[i]);
             } else {
-                sprintf(line, "%c = %.8e\n", 'a' + i, session.values[i]);
+                sprintf(line, "%c = %.8e\n", 'a' + i, session->values[i]);
             }
 
             strcat(result, line);
@@ -162,6 +175,10 @@ bool process_message(int session_id, const char message[]) {
         return false;
     }
 
+    // Part 3.2
+    session_t* session;
+    HASH_FIND_INT(session_ht, &session_id, session);
+
     // Makes a copy of the string since strtok() will modify the string that it is processing.
     char data[BUFFER_LEN];
     strcpy(data, message);
@@ -179,14 +196,14 @@ bool process_message(int session_id, const char message[]) {
         first_value = strtod(token, NULL);
     } else {
         int first_idx = token[0] - 'a';
-        first_value = session_list[session_id].values[first_idx];
+        first_value = session->values[first_idx];
     }
 
     // Processes the operation symbol.
     token = strtok(NULL, " ");
     if (token == NULL) {
-        session_list[session_id].variables[result_idx] = true;
-        session_list[session_id].values[result_idx] = first_value;
+        session->variables[result_idx] = true;
+        session->values[result_idx] = first_value;
         return true;
     }
     symbol = token[0];
@@ -197,22 +214,22 @@ bool process_message(int session_id, const char message[]) {
         second_value = strtod(token, NULL);
     } else {
         int second_idx = token[0] - 'a';
-        second_value = session_list[session_id].values[second_idx];
+        second_value = session->values[second_idx];
     }
 
     // No data should be left over thereafter.
     token = strtok(NULL, " ");
 
-    session_list[session_id].variables[result_idx] = true;
+    session->variables[result_idx] = true;
 
     if (symbol == '+') {
-        session_list[session_id].values[result_idx] = first_value + second_value;
+        session->values[result_idx] = first_value + second_value;
     } else if (symbol == '-') {
-        session_list[session_id].values[result_idx] = first_value - second_value;
+        session->values[result_idx] = first_value - second_value;
     } else if (symbol == '*') {
-        session_list[session_id].values[result_idx] = first_value * second_value;
+        session->values[result_idx] = first_value * second_value;
     } else if (symbol == '/') {
-        session_list[session_id].values[result_idx] = first_value / second_value;
+        session->values[result_idx] = first_value / second_value;
     }
 
     return true;
@@ -260,6 +277,10 @@ void load_all_sessions() {
             S_IRUSR
         );
 
+        // Part 3.2
+        session_t* session;
+        HASH_FIND_INT(session_ht, &id, session);
+
         // did we fail to open the file?
         if(fd < 0)
         {
@@ -288,7 +309,7 @@ void load_all_sessions() {
             // line #1
             if(line_num == 1)
             {
-                session_list[id].in_use = atoi(line);
+                session->in_use = atoi(line);
                 ++line_num;
 
                 // printf("%d\n", session_list[id].in_use);
@@ -301,7 +322,7 @@ void load_all_sessions() {
                 for(int i = 0; i < NUM_VARIABLES; ++i)
                 {
                     sprintf(val, "%d", *ptr);
-                    session_list[id].variables[i] = atoi(val - '0');
+                    session->variables[i] = atoi(val - '0');
                     ptr = strtok(NULL, " ");
 
                     // printf("%d ", session_list[id].variables[i]);
@@ -321,7 +342,7 @@ void load_all_sessions() {
                 {
                     // not working
                     val = strtod(line, &ptr);
-                    session_list[id].values[i] = val;
+                    session->values[i] = val;
                     // printf("%lf ", session_list[id].values[i]);
                     line = ptr;
                 }
@@ -356,6 +377,10 @@ void save_session(int session_id) {
         S_IRUSR | S_IWUSR
     );
 
+    // Part 3.2
+    session_t* session;
+    HASH_FIND_INT(session_ht, &session_id, session);
+
     // did we open the file?
     if(fd >= 0)
     {
@@ -365,7 +390,7 @@ void save_session(int session_id) {
         char all_lines[512*3], *pos_all = all_lines;
 
         // format each line
-        sprintf(line1, "%d\n", session_list[session_id].in_use);
+        sprintf(line1, "%d\n", session->in_use);
         for(int i = 0; i < NUM_VARIABLES; ++i)
         {
             if(i)
@@ -373,8 +398,8 @@ void save_session(int session_id) {
                 pos2 += sprintf(pos2, " ");
                 pos3 += sprintf(pos3, " ");
             }
-            pos2 += sprintf(pos2, "%d", session_list[session_id].variables[i]);
-            pos3 += sprintf(pos3, "%lf", session_list[session_id].values[i]);
+            pos2 += sprintf(pos2, "%d", session->variables[i]);
+            pos3 += sprintf(pos3, "%lf", session->values[i]);
         }
 
         pos2 += sprintf(pos2, "\n");
@@ -437,9 +462,14 @@ int register_browser(int browser_socket_fd) {
     int session_id = strtol(message, NULL, 10);
     if (session_id == -1) {
         for (int i = 0; i < NUM_SESSIONS; ++i) {
-            if (!session_list[i].in_use) {
+
+            // Part 3.2
+            session_t* session;
+            HASH_FIND_INT(session_ht, &session_id, session);
+
+            if (!session->in_use) {
                 session_id = i;
-                session_list[session_id].in_use = true;
+                session->in_use = true;
                 break;
             }
         }
@@ -548,9 +578,10 @@ void start_server(int port) {
         // Starts the handler thread for the new browser.
         // TODO: For Part 2.1, creat a thread to run browser_handler() here.
         pthread_t thread;
-        int err; 
-        
-        err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, (void *) browser_socket_fd);
+        int err;
+
+        // err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, (void *) browser_socket_fd);
+        err = pthread_create(&thread, NULL, (void *(*)(void *)) browser_handler, & browser_socket_fd);
 
         if (err) {
             printf("ERROR: Can't create thread: %d\n", err);
