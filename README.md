@@ -2,6 +2,10 @@
 
 ## Server
 
+### Dependencies
+
+ - uthash: https://troydhanson.github.io/uthash/ (inc/uthash.h)
+
 ### Capacity
 
 - Number of sessions: 128
